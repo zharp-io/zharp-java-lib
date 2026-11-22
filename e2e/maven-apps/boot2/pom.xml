@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot 2.7, MVC, JDBC on Postgres, Logback — run with the Zharp agent, built with Maven and
+  Zharp's Maven plugin (build ID in the jar, sources uploaded with ZHARP_AUTH_TOKEN / ZHARP_APP_ID).
+  The same app as e2e/apps/boot3-mvc: its sources are shared.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.7.18</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>e2e</groupId>
+  <artifactId>boot2</artifactId>
+  <version>1.0.0</version>
+
+  <properties>
+    <java.version>17</java.version>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>zharp-e2e</id>
+      <url>file:${project.basedir}/../../../build/e2e-repo</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>zharp-e2e</id>
+      <url>file:${project.basedir}/../../../build/e2e-repo</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.zharp</groupId>
+      <artifactId>zharp</artifactId>
+      <version>0.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>boot2</finalName>
+    <sourceDirectory>../../apps/boot3-mvc/src/main/java</sourceDirectory>
+    <resources>
+      <resource><directory>../../apps/boot3-mvc/src/main/resources</directory></resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>io.zharp</groupId>
+        <artifactId>zharp-maven-plugin</artifactId>
+        <version>0.1.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build-id</goal>
+              <goal>upload-sources</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
