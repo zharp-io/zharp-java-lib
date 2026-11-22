@@ -84,7 +84,8 @@ public final class Exceptions {
         } catch (RuntimeException e) {
             return t.toString();
         }
-        String stack = out.toString();
+        // One line ending everywhere: the server reads frames line by line.
+        String stack = out.toString().replace("\r\n", "\n");
         return stack.length() > MAX_STACK ? stack.substring(0, MAX_STACK) : stack;
     }
 

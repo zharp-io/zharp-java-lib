@@ -46,18 +46,30 @@ public final class ZharpAutoConfiguration {
         });
         c.addResourceCustomizer((resource, config) -> resource.merge(resource(s)));
         c.addTracerProviderCustomizer((builder, config) -> {
-            SdkTracerProviderUtil.setExceptionAttributeResolver(builder, new ZharpExceptionResolver());
+            resolver(() -> SdkTracerProviderUtil.setExceptionAttributeResolver(builder, new ZharpExceptionResolver()));
             if (!s.tracing) builder.setSampler(new RecordOnlySampler());
             return builder.addSpanProcessor(new ZharpSpanProcessor(core));
         });
         c.addLoggerProviderCustomizer((builder, config) -> {
-            SdkLoggerProviderUtil.setExceptionAttributeResolver(builder, new ZharpExceptionResolver());
+            resolver(() -> SdkLoggerProviderUtil.setExceptionAttributeResolver(builder, new ZharpExceptionResolver()));
             return builder;
         });
         c.addLogRecordProcessorCustomizer((processor, config) -> new ZharpLogProcessor(core, processor));
         c.addSpanExporterCustomizer((exporter, config) -> new ZharpSpanExporter(authorized(exporter, s)));
         c.addLogRecordExporterCustomizer((exporter, config) -> new ZharpLogExporter(authorized(exporter, s)));
         if (!s.tracing) c.addPropagatorCustomizer((propagator, config) -> new ExtractOnlyPropagator(propagator));
+    }
+
+    /**
+     * Exceptions written Zharp's way. An SDK older than 1.50 (a framework's pinned version) has no
+     * hook for it: OpenTelemetry's own writing is used, and a failure is matched to its log lines less exactly.
+     */
+    private static void resolver(Runnable install) {
+        try {
+            install.run();
+        } catch (LinkageError olderSdk) {
+            ZharpCore.announce("OpenTelemetry SDK older than 1.50 on the classpath: import io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom to align it.");
+        }
     }
 
     /** The resource every span and log carries: who sends, and which SDK. */
