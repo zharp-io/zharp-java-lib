@@ -43,5 +43,9 @@ public final class ZharpRuntime {
         error.printStackTrace(System.err);
     }
 
+    public static void debug(String message) {
+        if (DEBUG) System.err.println("[Zharp] " + message);
+    }
+
     private static final boolean DEBUG = Boolean.TRUE.equals(Settings.flagOf(Settings.pick(System.getProperty("zharp.debug"), Settings.env("ZHARP_DEBUG"))));
 }

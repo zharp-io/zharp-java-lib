@@ -17,4 +17,14 @@ export const SCENARIOS = [
     paths: [...ALL, 'POST /users', '/dup-caught'],
     command: () => ['java', [`-javaagent:${agent}`, '-jar', `${apps}/boot3-mvc/build/libs/boot3-mvc.jar`]],
   },
+  {
+    name: 'boot3-starter',
+    framework: 'spring-boot',
+    port: 18082,
+    db: true,
+    logs: true,
+    route: 'GET /users/{id}',
+    paths: [...ALL, 'POST /users', '/dup-caught'],
+    command: () => ['java', ['-jar', `${apps}/boot3-starter/build/libs/boot3-starter.jar`]],
+  },
 ];

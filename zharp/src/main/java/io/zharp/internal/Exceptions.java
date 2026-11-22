@@ -65,7 +65,8 @@ public final class Exceptions {
         }
     }
 
-    public static Info describe(Throwable t) {
+    public static Info describe(Throwable original) {
+        Throwable t = unwrap(original);
         String type = t.getClass().getName();
         String message = t.getMessage() == null ? "" : t.getMessage();
         String stack = stackOf(t);
@@ -74,7 +75,26 @@ public final class Exceptions {
             message = scrub(message);
             stack = scrub(stack);
         }
-        return new Info(type, message, stack, ids(t), sql != null ? sql.getSQLState() : null);
+        return new Info(type, message, stack, ids(original), sql != null ? sql.getSQLState() : null);
+    }
+
+    /**
+     * Wrappers that only carry an error from one layer to the next (a servlet's
+     * "Request processing failed", a future's ExecutionException): the error is what they wrap.
+     * OpenTelemetry's agent unwraps these on server spans; its library instrumentations don't.
+     */
+    private static final java.util.Set<String> WRAPPERS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "jakarta.servlet.ServletException", "javax.servlet.ServletException", "org.springframework.web.util.NestedServletException",
+            "java.util.concurrent.CompletionException", "java.util.concurrent.ExecutionException",
+            "java.lang.reflect.InvocationTargetException", "java.lang.reflect.UndeclaredThrowableException",
+            "reactor.core.Exceptions$ReactiveException"));
+
+    static Throwable unwrap(Throwable t) {
+        Throwable current = t;
+        for (int i = 0; i < 5 && current.getCause() != null && current.getCause() != current && WRAPPERS.contains(current.getClass().getName()); i++) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     public static String stackOf(Throwable t) {

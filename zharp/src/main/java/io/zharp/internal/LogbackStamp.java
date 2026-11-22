@@ -41,8 +41,9 @@ public final class LogbackStamp {
                 if (l instanceof Listener) return;
             }
             context.addListener(new Listener());
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
             // Lines go out unstamped.
+            ZharpRuntime.debug("Logback stamp", e);
         }
     }
 
@@ -58,16 +59,26 @@ public final class LogbackStamp {
         if (appender instanceof AppenderAttachable) {
             for (Iterator<Appender<ILoggingEvent>> it = ((AppenderAttachable<ILoggingEvent>) appender).iteratorForAppenders(); it.hasNext(); ) wrap(it.next(), depth + 1);
         }
+        ZharpRuntime.debug("Logback appender " + appender.getName() + " (" + appender.getClass().getName() + ")");
         if (!(appender instanceof OutputStreamAppender)) return;
         Encoder<ILoggingEvent> encoder = ((OutputStreamAppender<ILoggingEvent>) appender).getEncoder();
+        ZharpRuntime.debug("  encoder " + (encoder == null ? null : encoder.getClass().getName()) + (encoder instanceof LayoutWrappingEncoder ? ", layout " + ((LayoutWrappingEncoder<ILoggingEvent>) encoder).getLayout() : ""));
         if (!(encoder instanceof LayoutWrappingEncoder)) return;
         LayoutWrappingEncoder<ILoggingEvent> wrapping = (LayoutWrappingEncoder<ILoggingEvent>) encoder;
         Layout<ILoggingEvent> layout = wrapping.getLayout();
         if (layout == null || layout instanceof StampingLayout) return;
+        if (wrapping.getClass() != LayoutWrappingEncoder.class && !wrapping.getClass().getName().equals("ch.qos.logback.classic.encoder.PatternLayoutEncoder")) return;
         StampingLayout stamping = new StampingLayout(layout);
         stamping.setContext(appender.getContext());
         stamping.start();
-        wrapping.setLayout(stamping);
+        // A pattern encoder won't take another layout: a plain encoder around the stamping one replaces it.
+        LayoutWrappingEncoder<ILoggingEvent> replacement = new LayoutWrappingEncoder<>();
+        replacement.setContext(appender.getContext());
+        replacement.setLayout(stamping);
+        replacement.setCharset(wrapping.getCharset());
+        replacement.start();
+        ((OutputStreamAppender<ILoggingEvent>) appender).setEncoder(replacement);
+        ZharpRuntime.debug("Stamping " + appender.getName() + "'s " + layout.getClass().getName());
     }
 
     static final class StampingLayout extends LayoutBase<ILoggingEvent> {
