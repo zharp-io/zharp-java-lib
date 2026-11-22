@@ -6,7 +6,8 @@ Spring, plain servlets, Ktor, Quarkus, Micronaut, Javalin — anything on the JV
 | Artifact | What it is |
 |---|---|
 | `io.zharp:zharp-agent` | **The agent** (recommended): OpenTelemetry's Java agent with Zharp's settings and additions, one jar. No code changes. |
-| `io.zharp:zharp` | The API — `Zharp.captureError`, `setUser`, `setTag`, `log`, `startSpan`, `flush` — and library mode for apps that run without the agent. |
+| `io.zharp:zharp-api` | The API — `Zharp.captureError`, `setUser`, `setTag`, `log`, `startSpan`, `flush` — through the agent or the starter. Tiny: OpenTelemetry's API only. |
+| `io.zharp:zharp` | Library mode, for apps that run without the agent: the API plus OpenTelemetry's SDK and exporter, started by `Zharp.init()`. |
 | `io.zharp:zharp-spring-boot-starter` | Spring Boot without an agent (GraalVM native images, hosts that forbid agents). |
 | `io.zharp.java` (Gradle), `io.zharp:zharp-maven-plugin` | Build plugins: errors show the code of the build that ran. |
 
@@ -129,13 +130,13 @@ To send logs straight to Zharp (with their level, logger, thread and exception):
 export ZHARP_LOGS=true
 ```
 
-## The API: `io.zharp:zharp`
+## The API: `io.zharp:zharp-api`
 
 ```kotlin
-implementation("io.zharp:zharp:0.1.0")        // Gradle
+implementation("io.zharp:zharp-api:0.1.0")    // Gradle
 ```
 ```xml
-<dependency><groupId>io.zharp</groupId><artifactId>zharp</artifactId><version>0.1.0</version></dependency>
+<dependency><groupId>io.zharp</groupId><artifactId>zharp-api</artifactId><version>0.1.0</version></dependency>
 ```
 
 ```java
@@ -156,11 +157,16 @@ Zharp.startSpan("rebuild-index", span -> index.rebuild());
 Zharp.flush();                                                         // before a short-lived process exits
 ```
 
-With the agent or the starter these go through them. Nothing here throws into your app.
+With the agent or the starter these go through them (the starter already includes the API). Nothing here throws into your app.
 
 ## Library mode: no agent
 
-For tests, CLIs and jobs, or wherever agents aren't allowed — first thing in `main`:
+For tests, CLIs and jobs, or wherever agents aren't allowed, use `io.zharp:zharp` instead of `zharp-api` (same classes, plus the SDK) — and first thing in `main`:
+
+```kotlin
+implementation("io.zharp:zharp:0.1.0")
+```
+
 
 ```java
 Zharp.init();   // reads ZHARP_KEY, ZHARP_SERVICE… — or:
@@ -206,14 +212,18 @@ build's sources with a build plugin. The plugin writes a build ID into the jar
 (`META-INF/zharp/build.properties`) and uploads your `.java`/`.kt` files under it; the agent, the
 starter and library mode send that ID with every error, so the code shown is that build's.
 
+In a multi-module build the plugin covers every module: each module's jar gets the same build ID,
+and one upload holds the sources of all of them, with paths from the root project — so an error
+thrown in a library module shows that module's code too.
+
 ```kotlin
-// Gradle
+// Gradle: on the app (or the root project) — it covers every project in the build
 plugins { id("io.zharp.java") version "0.1.0" }
 zharp { appId = "123" }   // the application's ID in Zharp
 ```
 
 ```xml
-<!-- Maven -->
+<!-- Maven: in the parent POM's <build><plugins>, so every module gets the build ID -->
 <plugin>
   <groupId>io.zharp</groupId>
   <artifactId>zharp-maven-plugin</artifactId>

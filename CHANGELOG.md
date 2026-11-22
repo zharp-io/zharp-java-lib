@@ -2,7 +2,7 @@
 
 ## 0.1.0 — 2026-11-22
 
-First release: `io.zharp:zharp-agent`, `io.zharp:zharp`, `io.zharp:zharp-spring-boot-starter`,
+First release: `io.zharp:zharp-agent`, `io.zharp:zharp-api`, `io.zharp:zharp`, `io.zharp:zharp-spring-boot-starter`,
 Gradle plugin `io.zharp.java` and `io.zharp:zharp-maven-plugin`. Built on OpenTelemetry's Java
 agent and instrumentation 2.34.0 and SDK 1.68.0; Java 8+.
 
@@ -26,11 +26,13 @@ agent and instrumentation 2.34.0 and SDK 1.68.0; Java 8+.
   Either way each Logback / Log4j 2 line written during a request ends with
   `trace_id=… span_id=…`, so the Zharp agent links the lines it collects
   (`ZHARP_LOG_CORRELATION=false` turns it off). `ZHARP_TRACING=false`: logs only.
-- **API** (`io.zharp:zharp`): `Zharp.captureError`, `setUser` / `clearUser`, `setTag`,
-  `Zharp.log.info(…)` and the other levels, `startSpan`, `flush`. Through the agent when it's
-  there; `Zharp.init()` starts library mode where it isn't.
+- **API** (`io.zharp:zharp-api`): `Zharp.captureError`, `setUser` / `clearUser`, `setTag`,
+  `Zharp.log.info(…)` and the other levels, `startSpan`, `flush`, through the agent or the
+  starter; OpenTelemetry's API is its only dependency. **Library mode** (`io.zharp:zharp`): the
+  same API plus OpenTelemetry's SDK and exporter, started by `Zharp.init()`, with no agent.
 - **Spring Boot starter** (`io.zharp:zharp-spring-boot-starter`): the same, without an agent, on
   OpenTelemetry's Spring Boot starter; `zharp.key`, `zharp.service`… in application properties.
 - **Build plugins** (`io.zharp.java`, `zharp-maven-plugin`): a build ID in the jar
   (`META-INF/zharp/build.properties`) and the app's sources uploaded under it, so errors show the
-  code of the build that ran. Every error carries `zharp.build_id`.
+  code of the build that ran. Every error carries `zharp.build_id`. In a multi-module build every
+  module's jar gets the same ID and one upload holds all modules' sources.
