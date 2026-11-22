@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  * SDK it reports through. One per OpenTelemetry SDK — the agent's, the Spring Boot starter's, or
  * the one library mode starts.
  */
-public final class ZharpCore {
+public final class ZharpCore implements ZharpBackend {
     public final Settings settings;
     public final ContextStore store = new ContextStore();
     public final ErrorTracker errors;
@@ -51,6 +51,21 @@ public final class ZharpCore {
         return sdk;
     }
 
+    @Override
+    public io.opentelemetry.api.OpenTelemetry openTelemetry() {
+        return sdk;
+    }
+
+    @Override
+    public void setUser(Context context, Attributes user) {
+        store.setUser(context, user);
+    }
+
+    @Override
+    public void setTag(String key, Object value) {
+        store.setTag(key, value);
+    }
+
     /** An error report, in the span it happened in. */
     void emit(Severity severity, Attributes attributes, SpanContext span) {
         Logger logger = errorLogger;
@@ -76,6 +91,7 @@ public final class ZharpCore {
      * a Throwable (or one it wraps) already reported is skipped. A failed query it came from
      * gives it the statement and database.
      */
+    @Override
     public void report(Throwable error, boolean handled, Severity severity, Attributes extra, Context context) {
         try {
             Exceptions.Info info = Exceptions.describe(error);
@@ -108,6 +124,7 @@ public final class ZharpCore {
     }
 
     /** Send everything waiting, within {@code timeoutMillis}. */
+    @Override
     public void flush(long timeoutMillis) {
         OpenTelemetrySdk s = sdk;
         if (s == null) return;

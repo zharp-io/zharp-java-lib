@@ -1,5 +1,6 @@
 rootProject.name = "zharp-java"
 
+include("zharp-api")
 include("zharp")
 include("zharp-agent-extension")
 include("zharp-agent")

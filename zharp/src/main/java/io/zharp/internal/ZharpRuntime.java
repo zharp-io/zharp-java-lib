@@ -13,6 +13,7 @@ public final class ZharpRuntime {
 
     public static void install(ZharpCore c) {
         core = c;
+        ApiRuntime.install(c);
         settings = c.settings;
     }
 
@@ -30,22 +31,17 @@ public final class ZharpRuntime {
     }
 
     /** System property the agent sets, so the API in the application knows to go through it. */
-    public static final String AGENT_PROPERTY = "io.zharp.agent.version";
+    public static final String AGENT_PROPERTY = ApiRuntime.AGENT_PROPERTY;
 
     public static boolean agentPresent() {
-        return System.getProperty(AGENT_PROPERTY) != null;
+        return ApiRuntime.agentPresent();
     }
 
-    /** ZHARP_DEBUG=true: what went wrong inside Zharp, on stderr. Otherwise nothing. */
     public static void debug(String what, Throwable error) {
-        if (!DEBUG) return;
-        System.err.println("[Zharp] " + what + ": " + error);
-        error.printStackTrace(System.err);
+        ApiRuntime.debug(what, error);
     }
 
     public static void debug(String message) {
-        if (DEBUG) System.err.println("[Zharp] " + message);
+        ApiRuntime.debug(message);
     }
-
-    private static final boolean DEBUG = Boolean.TRUE.equals(Settings.flagOf(Settings.pick(System.getProperty("zharp.debug"), Settings.env("ZHARP_DEBUG"))));
 }

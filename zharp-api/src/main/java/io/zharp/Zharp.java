@@ -12,13 +12,11 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
-import io.zharp.internal.ContextStore;
 import io.zharp.internal.Exceptions;
 import io.zharp.internal.Keys;
-import io.zharp.internal.LibraryMode;
 import io.zharp.internal.Version;
-import io.zharp.internal.ZharpCore;
-import io.zharp.internal.ZharpRuntime;
+import io.zharp.internal.ApiRuntime;
+import io.zharp.internal.ZharpBackend;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -58,21 +56,29 @@ public final class Zharp {
      */
     public static void init(ZharpOptions options) {
         try {
-            LibraryMode.start(options.values);
+            // Library mode lives in io.zharp:zharp (the SDK and its exporter); io.zharp:zharp-api alone has none.
+            Class<?> library;
+            try {
+                library = Class.forName("io.zharp.internal.LibraryMode", true, Zharp.class.getClassLoader());
+            } catch (ClassNotFoundException e) {
+                if (!ApiRuntime.agentPresent()) ApiRuntime.announce("Zharp.init() needs io.zharp:zharp (library mode) — io.zharp:zharp-api only works through the Zharp agent or the Spring Boot starter.");
+                return;
+            }
+            library.getMethod("start", java.util.Map.class).invoke(null, options.values);
         } catch (Throwable e) {
-            ZharpCore.announce("Could not start: " + e);
+            ApiRuntime.announce("Could not start: " + e);
         }
     }
 
     /** Whether Zharp is sending from this process: the agent, the starter or library mode. */
     public static boolean isActive() {
-        return ZharpRuntime.core() != null || ZharpRuntime.agentPresent();
+        return ApiRuntime.backend() != null || ApiRuntime.agentPresent();
     }
 
     /** The OpenTelemetry Zharp sends through, for instrumenting your own code. */
     public static OpenTelemetry openTelemetry() {
-        ZharpCore core = ZharpRuntime.core();
-        if (core != null && core.sdk() != null) return core.sdk();
+        ZharpBackend core = ApiRuntime.backend();
+        if (core != null && core.openTelemetry() != null) return core.openTelemetry();
         return GlobalOpenTelemetry.get();
     }
 
@@ -86,14 +92,14 @@ public final class Zharp {
     public static void captureError(Throwable error, Map<String, ?> attributes) {
         if (error == null) return;
         try {
-            ZharpCore core = ZharpRuntime.core();
+            ZharpBackend core = ApiRuntime.backend();
             if (core != null) {
                 core.report(error, true, Severity.ERROR, attributes(attributes), Context.current());
-            } else if (ZharpRuntime.agentPresent()) {
+            } else if (ApiRuntime.agentPresent()) {
                 emitError(Severity.ERROR, null, error, attributes(attributes).toBuilder().put(Keys.HANDLED, "true").build());
             }
         } catch (Throwable e) {
-            ZharpRuntime.debug("Zharp API", e);
+            ApiRuntime.debug("Zharp API", e);
         }
     }
 
@@ -106,17 +112,17 @@ public final class Zharp {
      */
     public static void setUser(ZharpUser user) {
         try {
-            Attributes attributes = user == null ? null : ContextStore.userAttributes(user.id, user.email, user.name);
-            ZharpCore core = ZharpRuntime.core();
+            Attributes attributes = user == null ? null : userAttributes(user);
+            ZharpBackend core = ApiRuntime.backend();
             if (core != null) {
-                core.store.setUser(Context.current(), attributes);
-            } else if (ZharpRuntime.agentPresent()) {
+                core.setUser(Context.current(), attributes);
+            } else if (ApiRuntime.agentPresent()) {
                 AttributesBuilder b = Attributes.builder();
                 if (attributes != null) b.putAll(attributes);
                 control("setUser", b.build());
             }
         } catch (Throwable e) {
-            ZharpRuntime.debug("Zharp API", e);
+            ApiRuntime.debug("Zharp API", e);
         }
     }
 
@@ -133,14 +139,14 @@ public final class Zharp {
     public static void setTag(String key, Object value) {
         if (key == null || key.isEmpty()) return;
         try {
-            ZharpCore core = ZharpRuntime.core();
+            ZharpBackend core = ApiRuntime.backend();
             if (core != null) {
-                core.store.setTag(key, value);
-            } else if (ZharpRuntime.agentPresent()) {
+                core.setTag(key, value);
+            } else if (ApiRuntime.agentPresent()) {
                 control("setTag", Attributes.of(AttributeKey.stringKey("zharp.control.tag." + key), value == null ? "zharp.control.remove" : String.valueOf(value)));
             }
         } catch (Throwable e) {
-            ZharpRuntime.debug("Zharp API", e);
+            ApiRuntime.debug("Zharp API", e);
         }
     }
 
@@ -188,11 +194,11 @@ public final class Zharp {
 
     public static void flush(long timeoutMillis) {
         try {
-            ZharpCore core = ZharpRuntime.core();
+            ZharpBackend core = ApiRuntime.backend();
             if (core != null) core.flush(timeoutMillis);
-            else if (ZharpRuntime.agentPresent()) control("flush", Attributes.of(AttributeKey.longKey("zharp.control.timeout"), timeoutMillis));
+            else if (ApiRuntime.agentPresent()) control("flush", Attributes.of(AttributeKey.longKey("zharp.control.timeout"), timeoutMillis));
         } catch (Throwable e) {
-            ZharpRuntime.debug("Zharp API", e);
+            ApiRuntime.debug("Zharp API", e);
         }
     }
 
@@ -281,7 +287,7 @@ public final class Zharp {
                 }
                 logger().logRecordBuilder().setSeverity(severity).setSeverityText(text(severity)).setBody(message == null ? "" : message).setAllAttributes(a).emit();
             } catch (Throwable e) {
-                ZharpRuntime.debug("Zharp API", e);
+                ApiRuntime.debug("Zharp API", e);
             }
         }
     }
@@ -300,7 +306,7 @@ public final class Zharp {
 
     /** An error log: the exception written by the SDK that sends it (the agent's, or this process's). */
     private static void emitError(Severity severity, String message, Throwable error, Attributes extra) {
-        ZharpCore core = ZharpRuntime.core();
+        ZharpBackend core = ApiRuntime.backend();
         if (core != null && message == null) {
             core.report(error, !"false".equals(extra.get(Keys.HANDLED)), severity, extra, Context.current());
             return;
@@ -323,6 +329,14 @@ public final class Zharp {
             // OpenTelemetry API before 1.50 (a framework's pinned version): the attributes above stand.
         }
         record.emit();
+    }
+
+    private static Attributes userAttributes(ZharpUser user) {
+        if (user.id == null || user.id.isEmpty()) return null;
+        AttributesBuilder b = Attributes.builder().put(Keys.USER_ID, user.id);
+        if (user.email != null && !user.email.isEmpty()) b.put(Keys.USER_EMAIL, user.email);
+        if (user.name != null && !user.name.isEmpty()) b.put(Keys.USER_NAME, user.name);
+        return b.build();
     }
 
     private static void control(String command, Attributes attributes) {

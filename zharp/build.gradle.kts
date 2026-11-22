@@ -3,24 +3,13 @@ plugins {
     id("zharp.publishing")
 }
 
-description = "Zharp for Java: errors, traces and logs sent to Zharp. The API (Zharp.captureError, setUser, log, startSpan) and library mode for apps that run without the agent."
+description = "Zharp for Java without the agent (library mode): io.zharp:zharp-api plus OpenTelemetry's SDK and OTLP exporter, started by Zharp.init()."
 
-val generateVersion by tasks.registering {
-    val out = layout.buildDirectory.dir("generated/version")
-    val v = project.version.toString()
-    inputs.property("version", v)
-    outputs.dir(out)
-    doLast {
-        val file = out.get().file("io/zharp/internal/Version.java").asFile
-        file.parentFile.mkdirs()
-        file.writeText("package io.zharp.internal;\n\n/** Generated at build time. */\npublic final class Version {\n    public static final String VERSION = \"$v\";\n\n    private Version() {}\n}\n")
-    }
-}
-sourceSets.main { java.srcDir(generateVersion) }
+
 
 dependencies {
     api(platform("io.opentelemetry:opentelemetry-bom:${Versions.OTEL_SDK}"))
-    api("io.opentelemetry:opentelemetry-api")
+    api(project(":zharp-api"))
 
     // Library mode: the SDK, configured the same way as the agent, exporting OTLP over HTTP.
     implementation("io.opentelemetry:opentelemetry-sdk")

@@ -6,6 +6,7 @@ plugins {
 dependencies {
     // Bundled into the agent with the extension (the agent already has OpenTelemetry's SDK).
     implementation(project(":zharp")) { isTransitive = false }
+    implementation(project(":zharp-api")) { isTransitive = false }
 
     compileOnly(platform("io.opentelemetry:opentelemetry-bom:${Versions.OTEL_SDK}"))
     compileOnly(platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:${Versions.OTEL_INSTRUMENTATION_ALPHA}"))
