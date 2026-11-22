@@ -107,4 +107,13 @@ export const SCENARIOS = [
     paths: [...ALL, 'POST /users', '/dup-caught'],
     command: () => ['java', [`-javaagent:${agent}`, '-cp', `${apps}/servlet-jetty/build/install/servlet-jetty/lib/*`, 'e2e.servlet.ServletApp']],
   },
+  {
+    name: 'ktor',
+    framework: 'ktor',
+    port: 18086,
+    logs: true,
+    route: 'GET /users/{id}',
+    paths: ALL,
+    command: () => ['java', [`-javaagent:${agent}`, '-cp', `${apps}/ktor/build/install/ktor/lib/*`, 'e2e.ktor.KtorAppKt']],
+  },
 ];
