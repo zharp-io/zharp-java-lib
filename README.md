@@ -274,7 +274,7 @@ set (turning an instrumentation off, for one: `-Dotel.instrumentation.jdbc.enabl
 
 End-to-end tests run each app in `e2e/` against a local Zharp backend: `e2e/build.sh` (see `e2e/run.mjs`).
 
-Publishing (Maven Central, as `io.zharp:android`): `./gradlew publishToMavenCentral` and
+Publishing to Maven Central (the same account and signing key as `io.zharp:android`): `./gradlew publishToMavenCentral` and
 `cd zharp-maven-plugin && ./mvnw -Prelease deploy`, with the credentials and signing key from
 `~/.gradle/gradle.properties` / `~/.m2/settings.xml`. Attach `zharp-agent/build/release/zharp-agent.jar`
 to the GitHub release so the download URL above works.
