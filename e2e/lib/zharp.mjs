@@ -45,7 +45,11 @@ export async function issues(appId) {
   return Array.isArray(r) ? r : r?.issues ?? [];
 }
 export const issue = async (appId, issueId) => (await api(`applications/${appId}/issues/${issueId}`)).data;
-export const issueEvents = async (appId, issueId) => (await api(`applications/${appId}/issues/${issueId}/events`)).data;
+export async function issueEvents(appId, issueId) {
+  const r = (await api(`applications/${appId}/issues/${issueId}/events`)).data;
+  return Array.isArray(r) ? r : r?.events ?? r?.items ?? [];
+}
+export const issueEvent = async (appId, issueId, eventId) => (await api(`applications/${appId}/issues/${issueId}/events/${eventId}`)).data;
 export async function logs(appId) {
   const r = (await api(`applications/${appId}/logs?window=1h&limit=500`)).data;
   return Array.isArray(r) ? r : r?.logs ?? r?.entries ?? [];

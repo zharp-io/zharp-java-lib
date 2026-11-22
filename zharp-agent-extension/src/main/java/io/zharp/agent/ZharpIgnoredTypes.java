@@ -8,7 +8,6 @@ public final class ZharpIgnoredTypes implements IgnoredTypesConfigurer {
     @Override
     public void configure(IgnoredTypesBuilder builder) {
         builder.allowClass("ch.qos.logback.classic.PatternLayout");
-        builder.allowClass("org.apache.logging.log4j.core.layout.PatternLayout$PatternSerializer");
-        builder.allowClass("org.apache.logging.log4j.core.layout.PatternLayout$PatternSelectorSerializer");
+        builder.allowClass("org.apache.logging.log4j.core.layout.PatternLayout$");
     }
 }

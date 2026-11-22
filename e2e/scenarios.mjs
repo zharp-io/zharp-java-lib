@@ -95,4 +95,16 @@ export const SCENARIOS = [
     buildId: true,
     command: () => ['java', [`-javaagent:${agent}`, '-jar', `${mavenApps}/boot2/target/boot2.jar`]],
   },
+  {
+    // Also the Log4j 2 row: the app logs through Log4j 2 only.
+    name: 'servlet-jetty-log4j2',
+    framework: 'java',
+    port: 18085,
+    db: true,
+    logs: true,
+    // Servlet mappings ("/users/*") are routes the server turns into "/users/:id" from the path.
+    route: 'GET /users/:id',
+    paths: [...ALL, 'POST /users', '/dup-caught'],
+    command: () => ['java', [`-javaagent:${agent}`, '-cp', `${apps}/servlet-jetty/build/install/servlet-jetty/lib/*`, 'e2e.servlet.ServletApp']],
+  },
 ];

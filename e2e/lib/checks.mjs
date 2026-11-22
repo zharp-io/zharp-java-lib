@@ -31,7 +31,16 @@ export async function collect(app, s, call) {
   issues = await z.issues(app.id);
   traces = await z.traces(app.id);
   const details = [];
-  for (const issue of issues) details.push(await z.issue(app.id, issue.id));
+  for (const issue of issues) {
+    const detail = await z.issue(app.id, issue.id);
+    detail.allEvents = [detail.latestEvent];
+    if ((issue.events ?? 0) > 1) {
+      const list = await z.issueEvents(app.id, issue.id);
+      detail.allEvents = [];
+      for (const e of list) detail.allEvents.push((await z.issueEvent(app.id, issue.id, e.eventId ?? e.id)) ?? e);
+    }
+    details.push(detail);
+  }
   const logs = await z.logs(app.id);
   const trace = call ? await z.trace(call.traceId) : null;
   return { issues, traces, details, logs, trace };
@@ -40,7 +49,7 @@ export async function collect(app, s, call) {
 export function check(s, got, call, output, ctx = {}) {
   const results = [];
   const ok = (name, pass, detail = '') => results.push({ name, pass: !!pass, detail });
-  const events = got.details.map((d) => d.latestEvent).filter(Boolean);
+  const events = got.details.flatMap((d) => d.allEvents ?? [d.latestEvent]).filter(Boolean);
 
   if (s.route) ok('routes named', got.traces.some((t) => t.name === s.route), got.traces.map((t) => t.name).filter((n) => n.startsWith('GET') || n.startsWith('POST')).join(', '));
 

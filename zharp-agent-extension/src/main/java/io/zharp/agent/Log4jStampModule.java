@@ -1,6 +1,10 @@
 package io.zharp.agent;
 
+import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+import static net.bytebuddy.matcher.ElementMatchers.isInterface;
+import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.not;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
@@ -54,13 +58,14 @@ public final class Log4jStampModule extends InstrumentationModule {
     static final class Serializers implements TypeInstrumentation {
         @Override
         public ElementMatcher<TypeDescription> typeMatcher() {
-            return named("org.apache.logging.log4j.core.layout.PatternLayout$PatternSerializer")
-                    .or(named("org.apache.logging.log4j.core.layout.PatternLayout$PatternSelectorSerializer"));
+            // PatternSerializer and PatternSelectorSerializer before 2.13; NoFormat-, PatternFormatter-
+            // and PatternSelectorSerializer since (PatternSerializer became their interface).
+            return nameStartsWith("org.apache.logging.log4j.core.layout.PatternLayout$").and(not(isInterface()));
         }
 
         @Override
         public void transform(TypeTransformer transformer) {
-            transformer.applyAdviceToMethod(named("toSerializable").and(takesArguments(2)), Log4jStampModule.class.getName() + "$ToSerializableAdvice");
+            transformer.applyAdviceToMethod(named("toSerializable").and(takesArguments(2)).and(not(isAbstract())), Log4jStampModule.class.getName() + "$ToSerializableAdvice");
         }
     }
 
