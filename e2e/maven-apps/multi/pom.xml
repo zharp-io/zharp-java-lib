@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Two modules: the app, and a library the error is thrown in (the same sources as e2e/multi-gradle).
+  Zharp's Maven plugin is declared here, in the parent, so every module's jar gets the build ID; the
+  sources of all modules are uploaded once.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>e2e.multi</groupId>
+  <artifactId>multi</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>lib</module>
+    <module>app</module>
+  </modules>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>zharp-e2e</id>
+      <url>file:${maven.multiModuleProjectDirectory}/../../build/e2e-repo</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.zharp</groupId>
+        <artifactId>zharp-maven-plugin</artifactId>
+        <version>0.1.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build-id</goal>
+              <goal>upload-sources</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

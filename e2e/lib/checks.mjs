@@ -66,7 +66,7 @@ export function check(s, got, call, output, ctx = {}) {
   const withStack = events.filter((ev) => /\n\s*at [\w$.]+\(/.test(ev.stacktrace));
   ok('stacks in JVM form', withStack.length === events.length, `${withStack.length}/${events.length}`);
 
-  if (call && !s.logsOnly) {
+  if (call && !s.logsOnly && s.traceChecks !== false) {
     const spans = got.trace?.spans ?? [];
     const span = spans.find((sp) => sp.parentSpanId === call.parentId) ?? spans.find((sp) => sp.kind === 'SERVER');
     const a = span?.attributes ?? {};
@@ -77,7 +77,7 @@ export function check(s, got, call, output, ctx = {}) {
     }
     ok('user and session from baggage', a['enduser.id'] === 'u-42' && a['session.id'] === 's-42', JSON.stringify({ user: a['enduser.id'], session: a['session.id'] }));
   }
-  if ((s.paths.includes('/users/7') || s.cli) && !s.logsOnly) {
+  if ((s.paths.includes('/users/7') || s.cli) && !s.logsOnly && !s.noUser) {
     const users = got.traces.find((t) => t.userId === '7');
     ok('Zharp.setUser on the request', users?.userId === '7' && users?.userEmail === '7@example.com', users ? `${users.userId} ${users.userEmail}` : 'no user on the users request');
   }
@@ -97,9 +97,13 @@ export function check(s, got, call, output, ctx = {}) {
   if (s.buildId) {
     const frames = events.flatMap((ev) => ev.frames ?? []);
     const fromBuild = frames.filter((f) => f.contextFrom === 'build');
-    ok('build ID written into the jar', !!ctx.buildId, ctx.buildId);
+    ok('build ID written into the jar' + ((ctx.buildIds ?? []).length > 1 ? ' of every module' : ''), !!ctx.buildId && (ctx.buildIds ?? [ctx.buildId]).every((id) => id === ctx.buildId), (ctx.buildIds ?? [ctx.buildId]).join(', '));
     ok('sources uploaded', /uploaded the app's sources/.test(ctx.uploadOutput ?? ''), (ctx.uploadOutput ?? '').trim());
     ok('zharp.build_id on errors', events.every((ev) => ev.attributes?.['zharp.build_id'] === ctx.buildId), events.map((ev) => ev.attributes?.['zharp.build_id']).join(','));
+    if (s.libFrame) {
+      const lib = frames.filter((f) => s.libFrame.test(f.function) && f.contextFrom === 'build');
+      ok("the library module's frame shows its code from the build", lib.length > 0, lib.map((f) => `${f.function}:${f.line} ${f.bundlePath ?? ''}`).join(', ') || frames.slice(0, 4).map((f) => `${f.function} ${f.contextFrom ?? '-'}`).join(', '));
+    }
     ok("issue frames show the build's code (contextFrom: build)", fromBuild.length > 0, fromBuild.slice(0, 3).map((f) => `${f.function}:${f.line}`).join(', '));
   }
   return results;

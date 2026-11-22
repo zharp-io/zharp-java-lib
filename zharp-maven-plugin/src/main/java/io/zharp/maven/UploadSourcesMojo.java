@@ -2,11 +2,7 @@ package io.zharp.maven;
 
 import io.zharp.build.ArtifactUploader;
 import io.zharp.build.SourceBundle;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.util.Map;
-import java.util.Properties;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -48,15 +44,14 @@ public class UploadSourcesMojo extends ZharpMojo {
     @Override
     public void execute() throws MojoExecutionException {
         if (!includeSources || "false".equals(env("ZHARP_INCLUDE_SOURCES"))) return;
-        File file = new File(outputDirectory(), SourceBundle.RESOURCE);
-        if (!file.isFile()) throw new MojoExecutionException("Zharp: no build ID at " + file + " — add the build-id goal too.");
+        // Once per build: the first module to get here uploads the sources of all of them.
+        if (!session.getRepositorySession().getData().set(UploadSourcesMojo.class.getName(), null, Boolean.TRUE)) return;
         String buildId;
         Map<String, String> files;
-        try (InputStream in = new FileInputStream(file)) {
-            Properties p = new Properties();
-            p.load(in);
-            buildId = p.getProperty(SourceBundle.PROPERTY);
+        try {
             files = SourceBundle.collect(sourceDirs(), rootDir());
+            // The same ID build-id wrote into every module: it comes from these sources.
+            buildId = SourceBundle.buildId(files);
         } catch (Exception e) {
             throw new MojoExecutionException("Zharp: " + e.getMessage(), e);
         }

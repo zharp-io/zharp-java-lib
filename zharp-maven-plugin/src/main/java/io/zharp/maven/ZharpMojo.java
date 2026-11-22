@@ -24,11 +24,19 @@ abstract class ZharpMojo extends AbstractMojo {
         return outputDirectory;
     }
 
-    /** The project's Java source roots and src/main/kotlin. Generated sources (target/) are left out. */
+    /**
+     * The Java source roots and src/main/kotlin of every module in the build (the reactor), so one
+     * build ID covers them all and a library module's frames show their code too. Generated sources
+     * (target/) are left out by the bundle.
+     */
     List<File> sourceDirs() {
         List<File> dirs = new ArrayList<>();
-        for (String root : project.getCompileSourceRoots()) dirs.add(new File(root));
-        dirs.add(new File(project.getBasedir(), "src/main/kotlin"));
+        List<MavenProject> modules = session.getProjects() == null || session.getProjects().isEmpty() ? java.util.Collections.singletonList(project) : session.getProjects();
+        for (MavenProject module : modules) {
+            for (String root : module.getCompileSourceRoots()) dirs.add(new File(root));
+            dirs.add(new File(module.getBasedir(), "src/main/java"));
+            dirs.add(new File(module.getBasedir(), "src/main/kotlin"));
+        }
         return dirs;
     }
 

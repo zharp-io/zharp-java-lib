@@ -3,6 +3,7 @@ import { execSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as z from './lib/zharp.mjs';
 import { readEntry } from './lib/jar.mjs';
+import { delimiter } from 'node:path';
 
 const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const agent = `${repo}/zharp-agent/build/release/zharp-agent.jar`;
@@ -41,7 +42,9 @@ function withUpload(build, jar, cwd = apps) {
       const out = execSync(build, { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
       ctx.uploadOutput = out.split('\n').filter((l) => /Zharp/.test(l)).join('\n');
       console.log(`  ${ctx.uploadOutput.trim()}`);
-      ctx.buildId = buildIdOf(jar);
+      const jars = Array.isArray(jar) ? jar : [jar];
+      ctx.buildIds = jars.map(buildIdOf);
+      ctx.buildId = ctx.buildIds[0];
     },
     async after(ctx) {
       if (ctx.key?.id) await z.deleteKey(ctx.key.id);
@@ -149,5 +152,34 @@ export const SCENARIOS = [
     route: 'GET /users/{id}',
     paths: [...ALL, 'POST /users', '/dup-caught'],
     command: () => ['java', ['-javaagent:' + agent, '-jar', apps + '/boot3-mvc/build/libs/boot3-mvc.jar']],
+  },
+  {
+    // Two Gradle modules, the plugin applied to the app only: the error is thrown in the library
+    // module, and its frame shows the library's code from the build.
+    name: 'multi-gradle',
+    framework: 'java',
+    cli: true,
+    traceChecks: false,
+    noUser: true,
+    stamp: false,
+    paths: ['/boom'],
+    ...withUpload(`${gradlew} -p "${repo}/e2e/multi-gradle" clean assemble --console=plain`, [`${repo}/e2e/multi-gradle/app/build/libs/app.jar`, `${repo}/e2e/multi-gradle/lib/build/libs/lib.jar`]),
+    buildId: true,
+    libFrame: /^e2e\.multi\.lib\.Pricing\.total$/,
+    command: () => ['java', [`-javaagent:${agent}`, '-cp', [`${repo}/e2e/multi-gradle/app/build/libs/app.jar`, `${repo}/e2e/multi-gradle/lib/build/libs/lib.jar`].join(delimiter), 'e2e.multi.App']],
+  },
+  {
+    // The same two modules built by Maven, the plugin declared in the parent POM.
+    name: 'multi-maven',
+    framework: 'java',
+    cli: true,
+    traceChecks: false,
+    noUser: true,
+    stamp: false,
+    paths: ['/boom'],
+    ...withUpload(`${mvnw} -B -f multi/pom.xml clean package`, [`${mavenApps}/multi/app/target/app.jar`, `${mavenApps}/multi/lib/target/lib.jar`], mavenApps),
+    buildId: true,
+    libFrame: /^e2e\.multi\.lib\.Pricing\.total$/,
+    command: () => ['java', [`-javaagent:${agent}`, '-cp', [`${mavenApps}/multi/app/target/app.jar`, `${mavenApps}/multi/lib/target/lib.jar`].join(delimiter), 'e2e.multi.App']],
   },
 ];
