@@ -13,6 +13,8 @@ public final class ZharpExceptionResolver implements ExceptionAttributeResolver 
     @Override
     public void setExceptionAttributes(AttributeSetter setter, Throwable throwable, int maxAttributeLength) {
         try {
+            // On the app thread, whose class loader can see the build ID (a Spring Boot jar, a WAR).
+            BuildInfo.buildId();
             Exceptions.Info info = Exceptions.describe(throwable);
             setter.setAttribute(Keys.EXCEPTION_TYPE, info.type);
             setter.setAttribute(Keys.EXCEPTION_MESSAGE, info.message);
