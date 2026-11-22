@@ -51,7 +51,8 @@ export function check(s, got, call, output, ctx = {}) {
   const ok = (name, pass, detail = '') => results.push({ name, pass: !!pass, detail });
   const events = got.details.flatMap((d) => d.allEvents ?? [d.latestEvent]).filter(Boolean);
 
-  if (s.route) ok('routes named', got.traces.some((t) => t.name === s.route), got.traces.map((t) => t.name).filter((n) => n.startsWith('GET') || n.startsWith('POST')).join(', '));
+  if (s.logsOnly) ok('logs only: no spans sent', got.traces.length === 0, `${got.traces.length} spans`);
+  if (s.route && !s.logsOnly) ok('routes named', got.traces.some((t) => t.name === s.route), got.traces.map((t) => t.name).filter((n) => n.startsWith('GET') || n.startsWith('POST')).join(', '));
 
   // One issue event per failure, with the right type and handled flag; nothing else.
   const expected = expectedErrors(s);
@@ -65,7 +66,7 @@ export function check(s, got, call, output, ctx = {}) {
   const withStack = events.filter((ev) => /\n\s*at [\w$.]+\(/.test(ev.stacktrace));
   ok('stacks in JVM form', withStack.length === events.length, `${withStack.length}/${events.length}`);
 
-  if (call) {
+  if (call && !s.logsOnly) {
     const spans = got.trace?.spans ?? [];
     const span = spans.find((sp) => sp.parentSpanId === call.parentId) ?? spans.find((sp) => sp.kind === 'SERVER');
     const a = span?.attributes ?? {};
@@ -76,9 +77,13 @@ export function check(s, got, call, output, ctx = {}) {
     }
     ok('user and session from baggage', a['enduser.id'] === 'u-42' && a['session.id'] === 's-42', JSON.stringify({ user: a['enduser.id'], session: a['session.id'] }));
   }
-  if (s.paths.includes('/users/7') || s.cli) {
+  if ((s.paths.includes('/users/7') || s.cli) && !s.logsOnly) {
     const users = got.traces.find((t) => t.userId === '7');
     ok('Zharp.setUser on the request', users?.userId === '7' && users?.userEmail === '7@example.com', users ? `${users.userId} ${users.userEmail}` : 'no user on the users request');
+  }
+  if (!s.logs && !s.cli) {
+    const plain = got.logs.filter((l) => !(l.attributes?.['exception.type']) && !/Exception|Error|Violation/.test(l.body ?? ''));
+    ok('logs off (default): only errors sent', plain.length === 0, `${got.logs.length} records, ${plain.length} plain lines: ${plain.slice(0, 3).map((l) => l.body).join(' | ')}`);
   }
   if (s.logs) {
     const hello = got.logs.filter((l) => /hello from the e2e app/.test(l.body ?? ''));

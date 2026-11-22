@@ -127,4 +127,27 @@ export const SCENARIOS = [
     paths: ['/hello', '/boom', '/handled', '/logged', '/thread-crash'],
     command: () => ['java', ['-cp', `${apps}/library-mode/build/install/library-mode/lib/*`, 'e2e.library.LibraryApp']],
   },
+  {
+    // The boot3-mvc jar (built by its scenario) in logs-only mode: errors and logs, no spans.
+    name: 'logs-only',
+    framework: 'spring-boot',
+    port: 18087,
+    db: true,
+    logs: true,
+    logsOnly: true,
+    env: { ZHARP_TRACING: 'false' },
+    paths: [...ALL, 'POST /users', '/dup-caught'],
+    command: () => ['java', [`-javaagent:${agent}`, '-jar', `${apps}/boot3-mvc/build/libs/boot3-mvc.jar`]],
+  },
+  {
+    // The boot3-mvc jar with logs left off (the default): errors still reported, no other lines sent.
+    name: 'logs-off',
+    framework: 'spring-boot',
+    port: 18088,
+    db: true,
+    logs: false,
+    route: 'GET /users/{id}',
+    paths: [...ALL, 'POST /users', '/dup-caught'],
+    command: () => ['java', ['-javaagent:' + agent, '-jar', apps + '/boot3-mvc/build/libs/boot3-mvc.jar']],
+  },
 ];
