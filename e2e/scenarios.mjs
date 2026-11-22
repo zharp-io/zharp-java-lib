@@ -116,4 +116,15 @@ export const SCENARIOS = [
     paths: ALL,
     command: () => ['java', [`-javaagent:${agent}`, '-cp', `${apps}/ktor/build/install/ktor/lib/*`, 'e2e.ktor.KtorAppKt']],
   },
+  {
+    // No agent: Zharp.init() in main. A job rather than a server, so no routes or headers; the
+    // caller's trace and user come in TRACEPARENT / BAGGAGE.
+    name: 'library-mode',
+    framework: 'java',
+    cli: true,
+    logs: true,
+    headers: false,
+    paths: ['/hello', '/boom', '/handled', '/logged', '/thread-crash'],
+    command: () => ['java', ['-cp', `${apps}/library-mode/build/install/library-mode/lib/*`, 'e2e.library.LibraryApp']],
+  },
 ];

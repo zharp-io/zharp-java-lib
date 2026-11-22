@@ -26,23 +26,30 @@ for (const s of chosen) {
     if (s.before) await s.before(ctx);
     const env = { ZHARP_KEY: app.ingestKey, ZHARP_ENDPOINT: app.ingestUrl, ZHARP_SERVICE: app.serviceName, ZHARP_ENVIRONMENT: 'e2e', ZHARP_LOGS: s.logs ? 'true' : 'false', PORT: String(s.port), ...(s.env ?? {}), ...ctx.extra.env };
     const [command, args, cwd] = s.command(ctx);
-    proc = d.start(command, args, { cwd, env, label: s.name });
-    const base = `http://localhost:${s.port}`;
-    await d.waitFor(`${base}/hello`, proc.out);
     const call = d.browserCall();
-    await fetch(`${base}/hello`, { headers: call.headers });
-    for (const path of s.paths) {
-      if (path === '/hello') continue;
-      if (path === 'POST /users') {
-        await fetch(`${base}/users?email=dup@example.com`, { method: 'POST' });
-        await fetch(`${base}/users?email=dup@example.com`, { method: 'POST' });
-      } else {
-        await fetch(`${base}${path}`).catch(() => {});
+    let clean;
+    if (s.cli) {
+      // A job, not a server: the caller's trace and baggage are handed over in the environment.
+      proc = d.start(command, args, { cwd, env: { ...env, TRACEPARENT: call.headers.traceparent, BAGGAGE: call.headers.baggage }, label: s.name });
+      clean = await d.waitExit(proc, 60_000);
+    } else {
+      proc = d.start(command, args, { cwd, env, label: s.name });
+      const base = `http://localhost:${s.port}`;
+      await d.waitFor(`${base}/hello`, proc.out);
+      await fetch(`${base}/hello`, { headers: call.headers });
+      for (const path of s.paths) {
+        if (path === '/hello') continue;
+        if (path === 'POST /users') {
+          await fetch(`${base}/users?email=dup@example.com`, { method: 'POST' });
+          await fetch(`${base}/users?email=dup@example.com`, { method: 'POST' });
+        } else {
+          await fetch(`${base}${path}`).catch(() => {});
+        }
       }
+      await z.sleep(1500);
+      await fetch(`${base}/exit`).catch(() => {});
+      clean = await d.waitExit(proc);
     }
-    await z.sleep(1500);
-    await fetch(`${base}/exit`).catch(() => {});
-    const clean = await d.waitExit(proc);
     if (!clean) console.log('  (had to kill it)');
     const got = await collect(app, s, call);
     writeFileSync(new URL(`./.runs/${s.name}.json`, import.meta.url), JSON.stringify({ app: app.id, call, ...got, output: proc.out.text }, null, 1));

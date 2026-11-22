@@ -66,7 +66,8 @@ export function check(s, got, call, output, ctx = {}) {
   ok('stacks in JVM form', withStack.length === events.length, `${withStack.length}/${events.length}`);
 
   if (call) {
-    const span = (got.trace?.spans ?? []).find((sp) => sp.kind === 'SERVER');
+    const spans = got.trace?.spans ?? [];
+    const span = spans.find((sp) => sp.parentSpanId === call.parentId) ?? spans.find((sp) => sp.kind === 'SERVER');
     const a = span?.attributes ?? {};
     ok("caller's traceparent continued", span && span.parentSpanId === call.parentId, span ? `parent ${span.parentSpanId}` : 'no server span in the trace');
     if (s.headers !== false) {
@@ -75,8 +76,8 @@ export function check(s, got, call, output, ctx = {}) {
     }
     ok('user and session from baggage', a['enduser.id'] === 'u-42' && a['session.id'] === 's-42', JSON.stringify({ user: a['enduser.id'], session: a['session.id'] }));
   }
-  if (s.paths.includes('/users/7')) {
-    const users = got.traces.find((t) => /users/.test(t.name) && t.userId);
+  if (s.paths.includes('/users/7') || s.cli) {
+    const users = got.traces.find((t) => t.userId === '7');
     ok('Zharp.setUser on the request', users?.userId === '7' && users?.userEmail === '7@example.com', users ? `${users.userId} ${users.userEmail}` : 'no user on the users request');
   }
   if (s.logs) {
