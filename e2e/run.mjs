@@ -46,7 +46,7 @@ for (const s of chosen) {
     if (!clean) console.log('  (had to kill it)');
     const got = await collect(app, s, call);
     writeFileSync(new URL(`./.runs/${s.name}.json`, import.meta.url), JSON.stringify({ app: app.id, call, ...got, output: proc.out.text }, null, 1));
-    const results = check(s, got, call, proc.out.text);
+    const results = check(s, got, call, proc.out.text, ctx);
     for (const r of results) console.log(`  ${r.pass ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? `  — ${r.detail}` : ''}`);
     summary.push({ name: s.name, passed: results.filter((r) => r.pass).length, failed: results.filter((r) => !r.pass).map((r) => r.name) });
   } catch (error) {

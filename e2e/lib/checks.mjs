@@ -37,7 +37,7 @@ export async function collect(app, s, call) {
   return { issues, traces, details, logs, trace };
 }
 
-export function check(s, got, call, output) {
+export function check(s, got, call, output, ctx = {}) {
   const results = [];
   const ok = (name, pass, detail = '') => results.push({ name, pass: !!pass, detail });
   const events = got.details.map((d) => d.latestEvent).filter(Boolean);
@@ -82,7 +82,9 @@ export function check(s, got, call, output) {
   if (s.buildId) {
     const frames = events.flatMap((ev) => ev.frames ?? []);
     const fromBuild = frames.filter((f) => f.contextFrom === 'build');
-    ok('zharp.build_id on errors', events.every((ev) => ev.attributes?.['zharp.build_id'] === s.buildId()), events.map((ev) => ev.attributes?.['zharp.build_id']).join(','));
+    ok('build ID written into the jar', !!ctx.buildId, ctx.buildId);
+    ok('sources uploaded', /uploaded the app's sources/.test(ctx.uploadOutput ?? ''), (ctx.uploadOutput ?? '').trim());
+    ok('zharp.build_id on errors', events.every((ev) => ev.attributes?.['zharp.build_id'] === ctx.buildId), events.map((ev) => ev.attributes?.['zharp.build_id']).join(','));
     ok("issue frames show the build's code (contextFrom: build)", fromBuild.length > 0, fromBuild.slice(0, 3).map((f) => `${f.function}:${f.line}`).join(', '));
   }
   return results;

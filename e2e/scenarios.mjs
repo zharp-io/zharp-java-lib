@@ -1,10 +1,44 @@
 // The test matrix: how each app starts and what it can show.
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import * as z from './lib/zharp.mjs';
+import { readEntry } from './lib/jar.mjs';
 
-const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/, '');
+const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const agent = `${repo}/zharp-agent/build/release/zharp-agent.jar`;
 const apps = `${repo}/e2e/apps`;
 const ALL = ['/hello', '/users/7', '/boom', '/handled', '/logged', '/thread-crash'];
+const gradlew = process.platform === 'win32' ? `"${apps}/gradlew.bat"` : './gradlew';
+
+/** The build ID a jar carries (META-INF/zharp/build.properties: at the root of a Spring Boot jar, else in its classes). */
+function buildIdOf(jar) {
+  for (const entry of ['META-INF/zharp/build.properties', 'BOOT-INF/classes/META-INF/zharp/build.properties', 'WEB-INF/classes/META-INF/zharp/build.properties']) {
+    try {
+      const text = readEntry(jar, entry) ?? '';
+      const id = /io\.zharp\.build\.id=(\S+)/.exec(text)?.[1];
+      if (id) return id;
+    } catch {}
+  }
+  return null;
+}
+
+/** Build with a build plugin, uploading the sources to this run's app with a throwaway artifacts:write key. */
+function withUpload(build, jar) {
+  return {
+    async before(ctx) {
+      ctx.key = await z.createUploadKey(`java-e2e-${Date.now() % 100000}`);
+      if (!ctx.key.key) throw new Error('could not make an artifacts:write key');
+      const env = { ...process.env, ZHARP_AUTH_TOKEN: ctx.key.key, ZHARP_APP_ID: String(ctx.app.id), ZHARP_URL: z.API.replace(/\/api\/v1$/, '') };
+      const out = execSync(build, { cwd: apps, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      ctx.uploadOutput = out.split('\n').filter((l) => /Zharp/.test(l)).join('\n');
+      console.log(`  ${ctx.uploadOutput.trim()}`);
+      ctx.buildId = buildIdOf(jar);
+    },
+    async after(ctx) {
+      if (ctx.key?.id) await z.deleteKey(ctx.key.id);
+    },
+  };
+}
 
 export const SCENARIOS = [
   {
@@ -15,6 +49,9 @@ export const SCENARIOS = [
     logs: true,
     route: 'GET /users/{id}',
     paths: [...ALL, 'POST /users', '/dup-caught'],
+    // Built with the Gradle plugin (io.zharp.java): build ID in the jar, sources uploaded.
+    ...withUpload(`${gradlew} :boot3-mvc:clean :boot3-mvc:assemble --console=plain`, `${apps}/boot3-mvc/build/libs/boot3-mvc.jar`),
+    buildId: true,
     command: () => ['java', [`-javaagent:${agent}`, '-jar', `${apps}/boot3-mvc/build/libs/boot3-mvc.jar`]],
   },
   {
