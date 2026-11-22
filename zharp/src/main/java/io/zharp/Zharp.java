@@ -92,8 +92,8 @@ public final class Zharp {
             } else if (ZharpRuntime.agentPresent()) {
                 emitError(Severity.ERROR, null, error, attributes(attributes).toBuilder().put(Keys.HANDLED, "true").build());
             }
-        } catch (Throwable ignored) {
-            // Never throw into the application.
+        } catch (Throwable e) {
+            ZharpRuntime.debug("Zharp API", e);
         }
     }
 
@@ -115,8 +115,8 @@ public final class Zharp {
                 if (attributes != null) b.putAll(attributes);
                 control("setUser", b.build());
             }
-        } catch (Throwable ignored) {
-            // As above.
+        } catch (Throwable e) {
+            ZharpRuntime.debug("Zharp API", e);
         }
     }
 
@@ -139,8 +139,8 @@ public final class Zharp {
             } else if (ZharpRuntime.agentPresent()) {
                 control("setTag", Attributes.of(AttributeKey.stringKey("zharp.control.tag." + key), value == null ? "zharp.control.remove" : String.valueOf(value)));
             }
-        } catch (Throwable ignored) {
-            // As above.
+        } catch (Throwable e) {
+            ZharpRuntime.debug("Zharp API", e);
         }
     }
 
@@ -191,8 +191,8 @@ public final class Zharp {
             ZharpCore core = ZharpRuntime.core();
             if (core != null) core.flush(timeoutMillis);
             else if (ZharpRuntime.agentPresent()) control("flush", Attributes.of(AttributeKey.longKey("zharp.control.timeout"), timeoutMillis));
-        } catch (Throwable ignored) {
-            // As above.
+        } catch (Throwable e) {
+            ZharpRuntime.debug("Zharp API", e);
         }
     }
 
@@ -280,8 +280,8 @@ public final class Zharp {
                     return;
                 }
                 logger().logRecordBuilder().setSeverity(severity).setSeverityText(text(severity)).setBody(message == null ? "" : message).setAllAttributes(a).emit();
-            } catch (Throwable ignored) {
-                // Never throw into the application.
+            } catch (Throwable e) {
+                ZharpRuntime.debug("Zharp API", e);
             }
         }
     }
@@ -317,7 +317,11 @@ public final class Zharp {
                 .setBody(message != null ? message : info.type + ": " + info.message)
                 .setAllAttributes(b.build());
         // Last: the SDK's own writing of it (with the ids it knows the error by) wins.
-        record.setException(error);
+        try {
+            record.setException(error);
+        } catch (NoSuchMethodError olderApi) {
+            // OpenTelemetry API before 1.50 (a framework's pinned version): the attributes above stand.
+        }
         record.emit();
     }
 

@@ -35,4 +35,13 @@ public final class ZharpRuntime {
     public static boolean agentPresent() {
         return System.getProperty(AGENT_PROPERTY) != null;
     }
+
+    /** ZHARP_DEBUG=true: what went wrong inside Zharp, on stderr. Otherwise nothing. */
+    public static void debug(String what, Throwable error) {
+        if (!DEBUG) return;
+        System.err.println("[Zharp] " + what + ": " + error);
+        error.printStackTrace(System.err);
+    }
+
+    private static final boolean DEBUG = Boolean.TRUE.equals(Settings.flagOf(Settings.pick(System.getProperty("zharp.debug"), Settings.env("ZHARP_DEBUG"))));
 }
