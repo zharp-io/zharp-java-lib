@@ -28,7 +28,8 @@ public final class ZharpLogProcessor implements LogRecordProcessor {
         "org.apache.catalina.core.ContainerBase", "org.apache.catalina.core.StandardWrapperValve", "org.eclipse.jetty.ee",
         "org.eclipse.jetty.server.HttpChannel", "org.eclipse.jetty.servlet.ServletHandler", "io.undertow.request",
         "org.springframework.web.server.adapter.HttpWebHandlerAdapter", "reactor.netty", "io.ktor.server.Application",
-        "org.springframework.boot.SpringApplication",
+        "org.springframework.boot.SpringApplication", "org.springframework.boot.autoconfigure.web.reactive.error",
+        "org.springframework.boot.web.reactive.error", "org.springframework.web.server.handler",
     };
     private static final AttributeKey<String> CONTROL_USER_EMAIL = AttributeKey.stringKey("zharp.control.user.email");
 

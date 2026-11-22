@@ -39,6 +39,7 @@ public final class HeaderReader {
         List<String[]> out = new ArrayList<>();
         try {
             collect(source, request, out, 0);
+            if (out.isEmpty() && source != null) ZharpRuntime.debug("No headers read from " + source.getClass().getName());
         } catch (Throwable ignored) {
             // A shape we can't read: no headers rather than a broken request.
         }
@@ -109,8 +110,13 @@ public final class HeaderReader {
             return;
         }
         // A wrapper (OpenTelemetry's HttpRequestAndChannel, a record holding the request).
-        Method inner = method(c, request ? "request" : "response");
-        if (inner != null) collect(inner.invoke(o), request, out, depth + 1);
+        for (String accessor : request ? new String[] {"request", "getRequest"} : new String[] {"response", "getResponse"}) {
+            Method inner = method(c, accessor);
+            if (inner != null) {
+                collect(inner.invoke(o), request, out, depth + 1);
+                return;
+            }
+        }
     }
 
     /** An iterable of header entries: Map.Entry (Netty, Ktor), Jetty's HttpField, Undertow's HeaderValues. */

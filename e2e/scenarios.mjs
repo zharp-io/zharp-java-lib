@@ -27,4 +27,13 @@ export const SCENARIOS = [
     paths: [...ALL, 'POST /users', '/dup-caught'],
     command: () => ['java', ['-jar', `${apps}/boot3-starter/build/libs/boot3-starter.jar`]],
   },
+  {
+    name: 'boot3-webflux',
+    framework: 'spring-boot',
+    port: 18083,
+    logs: true,
+    route: 'GET /users/{id}',
+    paths: ALL,
+    command: () => ['java', [`-javaagent:${agent}`, '-jar', `${apps}/boot3-webflux/build/libs/boot3-webflux.jar`]],
+  },
 ];

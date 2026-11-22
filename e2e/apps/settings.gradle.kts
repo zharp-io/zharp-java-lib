@@ -19,3 +19,4 @@ rootProject.name = "zharp-e2e"
 
 include("boot3-mvc")
 include("boot3-starter")
+include("boot3-webflux")
