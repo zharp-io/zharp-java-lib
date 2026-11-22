@@ -47,17 +47,23 @@ val isolateJavaagentLibs = tasks.register<Copy>("isolateJavaagentLibs") {
     into(layout.buildDirectory.dir("isolated/javaagentLibs"))
 }
 
-tasks.jar { enabled = false }
 
 tasks.shadowJar {
     configurations = listOf(upstreamAgent)
     from(isolateJavaagentLibs)
-    archiveClassifier.set("")
+    archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles("inst/META-INF/services")
     filesMatching("inst/META-INF/services/**") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
     exclude("**/module-info.class")
     relocatePackages(this)
+}
+
+// The published jar (what Maven Central serves as io.zharp:zharp-agent) is the merged agent as it is.
+tasks.jar {
+    dependsOn(tasks.shadowJar)
+    from(zipTree(tasks.shadowJar.flatMap { it.archiveFile }))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes["Main-Class"] = "io.opentelemetry.javaagent.OpenTelemetryAgent"
         attributes["Agent-Class"] = "io.opentelemetry.javaagent.OpenTelemetryAgent"
@@ -72,9 +78,12 @@ tasks.shadowJar {
 
 // A stable name for GitHub release assets and Dockerfiles: .../releases/latest/download/zharp-agent.jar
 val stableAgentJar = tasks.register<Copy>("stableAgentJar") {
-    from(tasks.shadowJar)
+    from(tasks.jar)
     into(layout.buildDirectory.dir("release"))
     rename { "zharp-agent.jar" }
 }
 
 tasks.assemble { dependsOn(tasks.shadowJar, stableAgentJar) }
+
+// Only the merged agent is published: not the shadow plugin's own "-all" variant of it.
+(components["java"] as AdhocComponentWithVariants).withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) { skip() }
