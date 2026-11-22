@@ -37,7 +37,7 @@
   <dependencies>
     <dependency>
       <groupId>io.zharp</groupId>
-      <artifactId>zharp</artifactId>
+      <artifactId>zharp-api</artifactId>
       <version>0.1.0</version>
     </dependency>
     <dependency>

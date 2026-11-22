@@ -3,14 +3,10 @@ package io.zharp.gradle;
 import io.zharp.build.ArtifactUploader;
 import io.zharp.build.SourceBundle;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.util.Map;
-import java.util.Properties;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
@@ -31,9 +27,6 @@ public abstract class UploadSourcesTask extends DefaultTask {
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getSourceDirs();
-
-    @Internal
-    public abstract DirectoryProperty getBuildIdDir();
 
     @Internal
     public abstract Property<File> getRootDir();
@@ -62,13 +55,9 @@ public abstract class UploadSourcesTask extends DefaultTask {
 
     @TaskAction
     public void upload() throws Exception {
-        File properties = new File(getBuildIdDir().get().getAsFile(), SourceBundle.RESOURCE);
-        Properties p = new Properties();
-        try (InputStream in = new FileInputStream(properties)) {
-            p.load(in);
-        }
-        String buildId = p.getProperty(SourceBundle.PROPERTY);
         Map<String, String> files = SourceBundle.collect(getSourceDirs().getFiles(), getRootDir().get());
+        // The same ID every project's generateZharpBuildId wrote: it comes from these sources.
+        String buildId = SourceBundle.buildId(files);
         if (files.isEmpty()) {
             getLogger().lifecycle("Zharp: no Java or Kotlin sources found to upload.");
             return;

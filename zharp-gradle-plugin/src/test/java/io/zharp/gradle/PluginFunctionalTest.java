@@ -57,6 +57,36 @@ class PluginFunctionalTest {
         assertEquals(dryRun.group(1), id);
     }
 
+    @Test
+    void everyModuleGetsTheBuildIdAndOneUploadCoversThemAll() throws IOException {
+        write("settings.gradle", "rootProject.name = 'shop'\ninclude 'app', 'lib'\n");
+        write("lib/build.gradle", "plugins { id 'java-library' }\n");
+        write("lib/src/main/java/io/shop/lib/Pricing.java", "package io.shop.lib;\npublic class Pricing { public static int total() { return 1; } }\n");
+        write("app/build.gradle", "plugins { id 'java'\n id 'io.zharp.java' }\ndependencies { implementation project(':lib') }\n");
+        write("app/src/main/java/io/shop/App.java", "package io.shop;\npublic class App { int run() { return io.shop.lib.Pricing.total(); } }\n");
+
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(project)
+                .withPluginClasspath()
+                .withArguments("assemble", "--stacktrace")
+                .build();
+
+        Matcher dryRun = Pattern.compile("Zharp: build ([0-9a-f-]{36}) — dry run .*would upload 2 source file").matcher(result.getOutput());
+        assertTrue(dryRun.find(), result.getOutput());
+        assertEquals(1, result.getOutput().split("dry run", -1).length - 1, "one upload for the whole build");
+        assertEquals(dryRun.group(1), idIn(new File(project, "app/build/libs/app.jar")));
+        assertEquals(dryRun.group(1), idIn(new File(project, "lib/build/libs/lib.jar")));
+    }
+
+    private static String idIn(File jarFile) throws IOException {
+        try (JarFile jar = new JarFile(jarFile)) {
+            JarEntry entry = jar.getJarEntry("META-INF/zharp/build.properties");
+            if (entry == null) return null;
+            Matcher m = Pattern.compile("io\\.zharp\\.build\\.id=(\\S+)").matcher(new String(readAll(jar, entry), StandardCharsets.UTF_8));
+            return m.find() ? m.group(1) : null;
+        }
+    }
+
     private static byte[] readAll(JarFile jar, JarEntry entry) throws IOException {
         try (java.io.InputStream in = jar.getInputStream(entry)) {
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();

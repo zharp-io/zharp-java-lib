@@ -10,7 +10,7 @@ plugins {
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 
 dependencies {
-    implementation("io.zharp:zharp:0.1.0")
+    implementation("io.zharp:zharp-api:0.1.0")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     runtimeOnly("org.postgresql:postgresql")
