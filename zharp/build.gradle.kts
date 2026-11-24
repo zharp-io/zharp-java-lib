@@ -15,6 +15,8 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-sdk")
     implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    // Desktop apps: OpenTelemetry's OTLP encoder, for batches written to disk before they're sent.
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp-common")
 
     // Used only where present: the instrumentation API (the agent and the Spring Boot starter
     // bring it) for request/response headers, and Logback for stamping log lines.

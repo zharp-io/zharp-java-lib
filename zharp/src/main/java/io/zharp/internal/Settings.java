@@ -26,6 +26,8 @@ import java.util.regex.Pattern;
  * failed queries ZHARP_CAPTURE_QUERY_ERRORS default true    (zharp.capture.query.errors)
  * uncaught       ZHARP_CAPTURE_UNCAUGHT  default true       (zharp.capture.uncaught)
  * sample rate    ZHARP_SAMPLE_RATE       default 1          (zharp.sample.rate)
+ * desktop app    ZHARP_DESKTOP           default false      (zharp.desktop)
+ * desktop data   ZHARP_DATA_DIR                             (zharp.data.dir)
  * off            ZHARP_DISABLED                             (zharp.disabled)
  * </pre>
  */
@@ -49,6 +51,9 @@ public final class Settings {
     public final boolean captureUncaught;
     public final double sampleRate;
     public final boolean debug;
+    /** A desktop app: crashes kept on disk until sent, windows as screens, the device and session (see Desktop). */
+    public final boolean desktop;
+    public final String dataDir;
 
     /** Values given in code or configuration (the Spring Boot starter's zharp.* properties), by property name. */
     public interface Source {
@@ -62,7 +67,10 @@ public final class Settings {
         this.key = pick(value("zharp.key", "ZHARP_KEY"), value("zharp.api-key", "ZHARP_API_KEY"));
         this.service = orElse(pick(value("zharp.service", "ZHARP_SERVICE"), env("OTEL_SERVICE_NAME")), defaultService());
         this.environment = pick(value("zharp.environment", "ZHARP_ENVIRONMENT"), value("zharp.env", "ZHARP_ENV"));
-        this.release = pick(value("zharp.release", "ZHARP_RELEASE"), value("zharp.version", "ZHARP_VERSION"));
+        this.desktop = flag("zharp.desktop", "ZHARP_DESKTOP", false);
+        this.dataDir = value("zharp.data.dir", "ZHARP_DATA_DIR");
+        // A packaged desktop app (jpackage, which Compose's native distributions use) knows its version.
+        this.release = pick(value("zharp.release", "ZHARP_RELEASE"), value("zharp.version", "ZHARP_VERSION"), desktop ? System.getProperty("jpackage.app-version") : null);
         String ep = orElse(value("zharp.endpoint", "ZHARP_ENDPOINT"), DEFAULT_ENDPOINT);
         while (ep.endsWith("/")) ep = ep.substring(0, ep.length() - 1);
         this.endpoint = ep;
@@ -152,11 +160,17 @@ public final class Settings {
     }
 
     /**
-     * A service name when none is set: the jar the JVM was started with ("orders-api-1.4.2.jar"
+     * A service name when none is set: a packaged app's launcher, the jar the JVM was started with ("orders-api-1.4.2.jar"
      * is "orders-api"), else the main class ("com.shop.OrdersApplication" is "orders-application"),
      * else "java-app".
      */
     static String defaultService() {
+        // A packaged app (jpackage, Compose's native distributions): its launcher's name.
+        String launcher = System.getProperty("jpackage.app-path");
+        if (launcher != null && !launcher.trim().isEmpty()) {
+            String name = new File(launcher.trim()).getName().replaceAll("(?i)\\.exe$", "");
+            if (!name.isEmpty()) return name.toLowerCase(Locale.ROOT);
+        }
         String command = System.getProperty("sun.java.command");
         if (command != null && !command.trim().isEmpty()) {
             String first = command.trim().split("\\s+")[0];

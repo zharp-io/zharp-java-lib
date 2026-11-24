@@ -68,7 +68,7 @@ public class UploadSourcesMojo extends ZharpMojo {
         if (app == null) throw new MojoExecutionException("Zharp: set <appId> (or ZHARP_APP_ID) to upload the sources; a token is set but no application ID.");
         try {
             byte[] bundle = SourceBundle.gzippedJson(files);
-            new ArtifactUploader(first(url, env("ZHARP_URL")), token, "zharp-maven-plugin/0.1.0").uploadSourceBundle(app, buildId, first(release, env("ZHARP_RELEASE")), bundle);
+            new ArtifactUploader(first(url, env("ZHARP_URL")), token, "zharp-maven-plugin/0.2.0").uploadSourceBundle(app, buildId, first(release, env("ZHARP_RELEASE")), bundle);
             getLog().info("Zharp: uploaded the app's sources (" + files.size() + " files, " + bundle.length / 1024 + " kB gzipped) for build " + buildId + " — errors show the code of this build.");
         } catch (Exception e) {
             String message = "Zharp: couldn't upload the sources for build " + buildId + ": " + e.getMessage();

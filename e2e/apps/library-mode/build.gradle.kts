@@ -9,7 +9,7 @@ java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 application { mainClass.set("e2e.library.LibraryApp") }
 
 dependencies {
-    implementation("io.zharp:zharp:0.1.0")
+    implementation("io.zharp:zharp:0.2.0")
     implementation("ch.qos.logback:logback-classic:1.5.18")
     implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.34.0-alpha")
 }

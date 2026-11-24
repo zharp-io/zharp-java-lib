@@ -28,9 +28,14 @@ public final class UncaughtHandler implements Thread.UncaughtExceptionHandler {
     @Override
     public void uncaughtException(Thread thread, Throwable error) {
         try {
-            boolean main = "main".equals(thread.getName());
-            core.report(error, false, main ? Severity.FATAL : Severity.ERROR, Attributes.of(Keys.MECHANISM, "uncaught", io.opentelemetry.api.common.AttributeKey.stringKey("thread.name"), thread.getName()), Context.current());
-            core.flush(FLUSH_MS);
+            // A desktop app's crash: the main thread, or a Compose window's event thread (Compose closes
+            // the window). Elsewhere in a desktop app (a Swing event, a worker) the app keeps running,
+            // so it isn't held up: the report is on disk as soon as it's exported, and sent then.
+            boolean desktop = core.settings.desktop;
+            boolean fatal = desktop ? Desktop.endsApp(thread) : "main".equals(thread.getName());
+            core.report(error, false, fatal ? Severity.FATAL : Severity.ERROR, Attributes.of(Keys.MECHANISM, "uncaught", io.opentelemetry.api.common.AttributeKey.stringKey("thread.name"), thread.getName()), Context.current());
+            if (!desktop || fatal) core.flush(FLUSH_MS);
+            else core.flushLater();
         } catch (Throwable ignored) {
             // Never stand in the way of the crash.
         }

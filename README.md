@@ -117,6 +117,32 @@ tasks.named<JavaExec>("bootRun") {   // "run" for the application plugin (Kotlin
 </plugin>
 ```
 
+## Desktop apps: Compose for Desktop, Swing, JavaFX
+
+Library mode with `desktop(true)`, first thing in `main`:
+
+```kotlin
+// composeApp/build.gradle.kts: desktopMain (or jvmMain) dependencies
+implementation("io.zharp:zharp:0.2.0")
+
+fun main() {
+    Zharp.init(ZharpOptions.builder().key("zpk_…").desktop(true).build())
+    application { Window(onCloseRequest = ::exitApplication, title = "Shop") { App() } }
+}
+```
+
+- Batches are written to disk before they're sent; what didn't arrive (offline, a crash, quitting)
+  goes on the next launch. The folder: `%LOCALAPPDATA%\Zharp\<service>`, `~/Library/Caches/Zharp/<service>`,
+  `~/.cache/zharp/<service>`, or `dataDir(…)`.
+- A crash on a Compose window's thread is reported as fatal; each frame or dialog brought to the
+  front is the screen (`Zharp.setTag("screen.name", …)` inside one window).
+- OS, device, session and the packaged app's version (Compose's `packageVersion`) on every error.
+- Compose's packaged runtime is jlink'd: add what `./gradlew suggestRuntimeModules` lists,
+  `modules("java.instrument", "java.sql", "jdk.unsupported")`, to `nativeDistributions`.
+- The Gradle plugin (`io.zharp.java`) works in Kotlin Multiplatform modules and uploads after
+  Compose's `createDistributable` / `package*` tasks. Keep ProGuard's `obfuscate` off (Compose's
+  default) and keep `io.zharp.**` and `io.opentelemetry.**`.
+
 ## Logback and Log4j 2
 
 Nothing to add: with the agent, every line Logback or Log4j 2 writes during a request through a

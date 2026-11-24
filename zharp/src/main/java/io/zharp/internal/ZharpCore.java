@@ -137,6 +137,18 @@ public final class ZharpCore implements ZharpBackend {
         }
     }
 
+    /** Start sending everything waiting, without waiting for it. */
+    public void flushLater() {
+        OpenTelemetrySdk s = sdk;
+        if (s == null) return;
+        try {
+            s.getSdkLoggerProvider().forceFlush();
+            s.getSdkTracerProvider().forceFlush();
+        } catch (RuntimeException ignored) {
+            // As above.
+        }
+    }
+
     /** One line on stderr, prefixed so it can be searched for. */
     public static void announce(String message) {
         System.err.println("[Zharp] " + message);
