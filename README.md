@@ -137,6 +137,8 @@ fun main() {
 - A crash on a Compose window's thread is reported as fatal; each frame or dialog brought to the
   front is the screen (`Zharp.setTag("screen.name", …)` inside one window).
 - OS, device, session and the packaged app's version (Compose's `packageVersion`) on every error.
+- Compose's packaged runtime is jlink'd: add what `./gradlew suggestRuntimeModules` lists,
+  `modules("java.instrument", "java.sql", "jdk.unsupported")`, to `nativeDistributions`.
 - The Gradle plugin (`io.zharp.java`) works in Kotlin Multiplatform modules and uploads after
   Compose's `createDistributable` / `package*` tasks. Keep ProGuard's `obfuscate` off (Compose's
   default) and keep `io.zharp.**` and `io.opentelemetry.**`.

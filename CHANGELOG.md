@@ -10,10 +10,15 @@
   comes to the front is the screen (`screen.name`, a `screen <title>` span). OS, `host.arch`, a
   per-install `device.id` and a per-launch `session.id` on everything; the release defaults to a
   packaged app's version (`jpackage.app-version`), the service to its launcher's name.
-  `dataDir(…)` / `ZHARP_DATA_DIR` moves the folder.
+  `dataDir(…)` / `ZHARP_DATA_DIR` moves the folder. A jlink'd runtime (Compose's
+  `createDistributable`) needs `modules("java.instrument", "java.sql", "jdk.unsupported")`, as
+  `./gradlew suggestRuntimeModules` lists.
 - **Gradle plugin:** Kotlin Multiplatform modules (each JVM target's main resources get the build
   ID; every `*Main` source set is uploaded), and Compose for Desktop's packaging tasks
   (`createDistributable`, `packageDmg`, `packageReleaseMsi`…) upload the sources too.
+- Library mode in an app without Logback: `Zharp.init()` failed (Logback's types were resolved
+  while starting the log stamp); the stamp is only set up when Logback is there. `Zharp.init`
+  now says what failed rather than `InvocationTargetException`.
 - The build plugins' shared uploader (`build-support/…/io/zharp/build`) is in the repository: a
   `build/` ignore rule had kept it out.
 
