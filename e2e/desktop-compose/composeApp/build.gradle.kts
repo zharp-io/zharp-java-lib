@@ -32,6 +32,8 @@ compose.desktop {
             targetFormats(TargetFormat.Deb)
             packageName = "zharp-desktop-e2e"
             packageVersion = "1.4.2"
+            // What ./gradlew suggestRuntimeModules says Zharp (OpenTelemetry's SDK) needs in the jlink'd runtime.
+            modules("java.instrument", "java.sql", "jdk.unsupported")
         }
         // E2E_OBFUSCATE=true: a release build with ProGuard obfuscation (default: off, as Compose ships it).
         buildTypes.release.proguard {

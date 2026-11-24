@@ -44,7 +44,14 @@ public final class LibraryMode {
 
         installAppender("io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender", sdk);
         installAppender("io.opentelemetry.instrumentation.log4j.appender.v2_17.OpenTelemetryAppender", sdk);
-        if (settings.logCorrelation && LogbackStamp.available()) LogbackStamp.install();
+        if (settings.logCorrelation && present("ch.qos.logback.classic.LoggerContext")) {
+            // LogbackStamp is only loaded with Logback there: its types would fail to resolve.
+            try {
+                if (LogbackStamp.available()) LogbackStamp.install();
+            } catch (LinkageError e) {
+                // Lines go out unstamped.
+            }
+        }
         if (settings.captureUncaught) UncaughtHandler.install(core);
         if (settings.desktop) Desktop.start(core);
         String build = BuildInfo.buildId();
@@ -55,6 +62,15 @@ public final class LibraryMode {
         AutoConfiguredOpenTelemetrySdkBuilder builder = AutoConfiguredOpenTelemetrySdk.builder();
         ZharpAutoConfiguration.customize(builder, core);
         return builder;
+    }
+
+    private static boolean present(String className) {
+        try {
+            Class.forName(className, false, LibraryMode.class.getClassLoader());
+            return true;
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     /** OpenTelemetry's Logback / Log4j appender, when the app has it: their records go to Zharp too. */

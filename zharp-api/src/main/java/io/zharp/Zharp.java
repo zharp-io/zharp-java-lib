@@ -69,7 +69,7 @@ public final class Zharp {
             Throwable cause = e instanceof java.lang.reflect.InvocationTargetException && e.getCause() != null ? e.getCause() : e;
             ApiRuntime.announce("Could not start: " + cause);
             if (cause instanceof LinkageError) {
-                ApiRuntime.announce("A class Zharp needs isn't in this runtime. A jlink'd runtime (Compose's createDistributable, jpackage) needs the modules java.logging, java.management, java.naming, java.net.http and jdk.unsupported.");
+                ApiRuntime.announce("A class Zharp needs isn't in this runtime. A jlink'd runtime (Compose's createDistributable, jpackage) needs the modules that ./gradlew suggestRuntimeModules lists: java.instrument, java.sql and jdk.unsupported for Zharp.");
             }
         }
     }
