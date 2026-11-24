@@ -20,10 +20,11 @@ import org.gradle.api.tasks.TaskProvider;
  * whole build:
  *
  * <ul>
- *   <li>every Java/Kotlin project in the build gets {@code generateZharpBuildId}, writing the same
- *       build ID into its jar ({@code META-INF/zharp/build.properties});
+ *   <li>every Java/Kotlin project in the build — Kotlin Multiplatform ones too (their JVM targets) —
+ *       gets {@code generateZharpBuildId}, writing the same build ID into its jar
+ *       ({@code META-INF/zharp/build.properties});
  *   <li>{@code uploadZharpSources} uploads the sources of all of them, once, under that ID, with paths
- *       from the root project — after any of them is assembled.
+ *       from the root project — after any of them is assembled, or packaged by Compose for Desktop.
  * </ul>
  */
 public final class ZharpJavaPlugin implements Plugin<Project> {
@@ -60,18 +61,38 @@ public final class ZharpJavaPlugin implements Plugin<Project> {
             task.getFailOnUploadError().set(extension.getFailOnUploadError());
         });
 
-        root.allprojects(each -> each.getPlugins().withType(JavaPlugin.class, java -> {
-            SourceSet main = each.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            TaskProvider<GenerateBuildIdTask> generate = each.getTasks().register(GENERATE, GenerateBuildIdTask.class, task -> {
-                task.setGroup("zharp");
-                task.setDescription("Writes the build ID Zharp knows this build's sources by into the jar.");
-                task.getSourceDirs().from(sources);
-                task.getRootDir().set(root.getProjectDir());
-                task.getOutputDir().set(each.getLayout().getBuildDirectory().dir("generated/zharp/resources"));
+        root.allprojects(each -> {
+            each.getPlugins().withType(JavaPlugin.class, java -> {
+                SourceSet main = each.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+                main.getResources().srcDir(generateTask(each, root, sources).flatMap(GenerateBuildIdTask::getOutputDir));
+                each.getTasks().named("assemble", task -> task.finalizedBy(upload));
             });
-            main.getResources().srcDir(generate.flatMap(GenerateBuildIdTask::getOutputDir));
-            each.getTasks().named("assemble", task -> task.finalizedBy(upload));
-        }));
+            // Kotlin Multiplatform (Compose Multiplatform's desktop app): no Java plugin; each JVM
+            // target's main compilation gets the build ID in its resources.
+            each.getPlugins().withId("org.jetbrains.kotlin.multiplatform", kmp -> {
+                TaskProvider<GenerateBuildIdTask> generate = generateTask(each, root, sources);
+                KotlinMultiplatform.eachJvmMainResources(each, resources -> resources.srcDir(generate.flatMap(GenerateBuildIdTask::getOutputDir)));
+                each.getTasks().named("assemble", task -> task.finalizedBy(upload));
+            });
+            // Compose for Desktop's packaging (createDistributable, packageDmg, packageReleaseMsi…) doesn't run assemble.
+            each.getTasks().configureEach(task -> {
+                if (COMPOSE_PACKAGING.matcher(task.getName()).matches()) task.finalizedBy(upload);
+            });
+        });
+    }
+
+    static final java.util.regex.Pattern COMPOSE_PACKAGING = java.util.regex.Pattern.compile(
+            "^(create|package)(Release)?(Distributable|DistributionForCurrentOS|UberJarForCurrentOS|Dmg|Pkg|Msi|Exe|Deb|Rpm|AppImage)$");
+
+    private static TaskProvider<GenerateBuildIdTask> generateTask(Project each, Project root, FileCollection sources) {
+        if (each.getTasks().getNames().contains(GENERATE)) return each.getTasks().named(GENERATE, GenerateBuildIdTask.class);
+        return each.getTasks().register(GENERATE, GenerateBuildIdTask.class, task -> {
+            task.setGroup("zharp");
+            task.setDescription("Writes the build ID Zharp knows this build's sources by into the jar.");
+            task.getSourceDirs().from(sources);
+            task.getRootDir().set(root.getProjectDir());
+            task.getOutputDir().set(each.getLayout().getBuildDirectory().dir("generated/zharp/resources"));
+        });
     }
 
     private static Provider<String> env(ProviderFactory providers, String name) {
@@ -87,6 +108,7 @@ public final class ZharpJavaPlugin implements Plugin<Project> {
             dirs.addAll(sets.getByName(SourceSet.MAIN_SOURCE_SET_NAME).getJava().getSrcDirs());
             dirs.add(p.file("src/main/kotlin"));
         }
+        for (Project p : root.getAllprojects()) dirs.addAll(KotlinMultiplatform.mainSourceDirs(p));
         return dirs;
     }
 }

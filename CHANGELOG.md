@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 — unreleased
+
+- **Desktop apps** (`ZharpOptions.desktop(true)` / `ZHARP_DESKTOP=true`, library mode): Compose
+  Multiplatform for Desktop, Swing and JavaFX. Every batch is written to disk before it is sent and
+  deleted once Zharp has it; what didn't arrive (offline, a crash, a quit mid-send) is sent by the
+  next launch (200 files, 8 MB, 3 days). An exception on a Compose window's thread is reported as
+  the crash it is; other threads' uncaught exceptions don't hold the app up. Each frame/dialog that
+  comes to the front is the screen (`screen.name`, a `screen <title>` span). OS, `host.arch`, a
+  per-install `device.id` and a per-launch `session.id` on everything; the release defaults to a
+  packaged app's version (`jpackage.app-version`), the service to its launcher's name.
+  `dataDir(…)` / `ZHARP_DATA_DIR` moves the folder.
+- **Gradle plugin:** Kotlin Multiplatform modules (each JVM target's main resources get the build
+  ID; every `*Main` source set is uploaded), and Compose for Desktop's packaging tasks
+  (`createDistributable`, `packageDmg`, `packageReleaseMsi`…) upload the sources too.
+- The build plugins' shared uploader (`build-support/…/io/zharp/build`) is in the repository: a
+  `build/` ignore rule had kept it out.
+
 ## 0.1.0 — 2026-11-22
 
 First release: `io.zharp:zharp-agent`, `io.zharp:zharp-api`, `io.zharp:zharp`, `io.zharp:zharp-spring-boot-starter`,

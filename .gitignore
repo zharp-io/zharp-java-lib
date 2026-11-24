@@ -8,3 +8,5 @@ target/
 out/
 local.properties
 e2e/.runs/
+# Java packages named "build" (io.zharp.build) are sources, not build output.
+!**/src/**/build/

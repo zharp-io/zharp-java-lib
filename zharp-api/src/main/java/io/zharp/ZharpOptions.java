@@ -80,6 +80,21 @@ public final class ZharpOptions {
             return set("zharp.capture.uncaught", String.valueOf(on));
         }
 
+        /**
+         * A desktop app (Compose Multiplatform, Swing, JavaFX): errors and crashes are kept on disk
+         * until they are sent (offline, or the app quits mid-send, they go on the next launch), each
+         * window shown is a screen, and the OS, device and session go with every error. Default:
+         * {@code ZHARP_DESKTOP}, else off.
+         */
+        public Builder desktop(boolean desktop) {
+            return set("zharp.desktop", String.valueOf(desktop));
+        }
+
+        /** Where a desktop app keeps what is waiting to be sent. Default: the user's cache folder ({@code …/Zharp/<service>}). */
+        public Builder dataDir(String path) {
+            return set("zharp.data.dir", path);
+        }
+
         /** More header names to send as {@code [Filtered]}. */
         public Builder redactHeaders(List<String> names) {
             return set("zharp.capture.headers.redact", String.join(",", names));

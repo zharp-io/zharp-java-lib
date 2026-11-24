@@ -55,8 +55,14 @@ public final class ZharpAutoConfiguration {
             return builder;
         });
         c.addLogRecordProcessorCustomizer((processor, config) -> new ZharpLogProcessor(core, processor));
-        c.addSpanExporterCustomizer((exporter, config) -> new ZharpSpanExporter(authorized(exporter, s)));
-        c.addLogRecordExporterCustomizer((exporter, config) -> new ZharpLogExporter(authorized(exporter, s)));
+        if (s.desktop) {
+            // Written to disk before sending, sent again on the next launch if it didn't arrive.
+            c.addSpanExporterCustomizer((exporter, config) -> new ZharpSpanExporter(new DesktopSender.Spans(Desktop.sender(s))));
+            c.addLogRecordExporterCustomizer((exporter, config) -> new ZharpLogExporter(new DesktopSender.Logs(Desktop.sender(s))));
+        } else {
+            c.addSpanExporterCustomizer((exporter, config) -> new ZharpSpanExporter(authorized(exporter, s)));
+            c.addLogRecordExporterCustomizer((exporter, config) -> new ZharpLogExporter(authorized(exporter, s)));
+        }
         if (!s.tracing) c.addPropagatorCustomizer((propagator, config) -> new ExtractOnlyPropagator(propagator));
     }
 
@@ -83,6 +89,7 @@ public final class ZharpAutoConfiguration {
                 .put("telemetry.distro.version", Version.VERSION);
         if (s.release != null) b.put("service.version", s.release);
         if (s.environment != null) b.put("deployment.environment.name", s.environment);
+        if (s.desktop) b.putAll(Desktop.resource(s));
         return Resource.create(b.build());
     }
 

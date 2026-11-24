@@ -20,7 +20,7 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation("io.zharp:zharp-spring-boot-starter:0.1.0")
+    implementation("io.zharp:zharp-spring-boot-starter:0.2.0")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     runtimeOnly("org.postgresql:postgresql")

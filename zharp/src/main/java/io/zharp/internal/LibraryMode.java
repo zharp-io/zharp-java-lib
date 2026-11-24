@@ -46,8 +46,9 @@ public final class LibraryMode {
         installAppender("io.opentelemetry.instrumentation.log4j.appender.v2_17.OpenTelemetryAppender", sdk);
         if (settings.logCorrelation && LogbackStamp.available()) LogbackStamp.install();
         if (settings.captureUncaught) UncaughtHandler.install(core);
+        if (settings.desktop) Desktop.start(core);
         String build = BuildInfo.buildId();
-        ZharpCore.announce("Application monitoring active" + (settings.tracing ? "" : " (logs only)") + " — " + settings.describeTarget() + " (library mode" + (build != null ? ", build " + build : "") + ")");
+        ZharpCore.announce("Application monitoring active" + (settings.tracing ? "" : " (logs only)") + (settings.desktop ? " (desktop app)" : "") + " — " + settings.describeTarget() + " (library mode" + (build != null ? ", build " + build : "") + ")");
     }
 
     private static AutoConfiguredOpenTelemetrySdkBuilder configured(ZharpCore core) {
