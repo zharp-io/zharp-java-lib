@@ -13,7 +13,8 @@
 //   1. handled — Zharp.captureError, then a second window; online
 //   2. crash   — an exception on the Compose window's thread, with Zharp unreachable: kept on disk
 //   3. thread  — an uncaught exception on a worker thread; online: sends it, and launch 2's crash
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -65,14 +66,16 @@ const env = {
   ZHARP_KEY: app.ingestKey, ZHARP_ENDPOINT: toContainer(app.ingestUrl), ZHARP_ENVIRONMENT: 'e2e',
   E2E_OBFUSCATE: process.env.E2E_OBFUSCATE ?? 'false',
 };
+// Asynchronous: the stand-in receiver answers from this process while the app runs.
+const run = promisify(execFile);
 try {
-  output = inDocker
-    ? execFileSync('docker', ['run', '--rm', '--add-host=host.docker.internal:host-gateway',
+  output = (inDocker
+    ? await run('docker', ['run', '--rm', '--add-host=host.docker.internal:host-gateway',
       '-v', `${repo}:/src`, '-v', 'zharp-desktop-e2e-gradle:/root/.gradle',
       ...Object.entries(env).flatMap(([k, v]) => ['-e', `${k}=${v}`]),
-      image, 'bash', '-c', script], { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe'] })
+      image, 'bash', '-c', script], { encoding: 'utf8', maxBuffer: 64 << 20 })
     // E2E_DOCKER=0: on this machine (a CI runner with Xvfb and a JDK).
-    : execFileSync('bash', ['-c', script], { encoding: 'utf8', maxBuffer: 64 << 20, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+    : await run('bash', ['-c', script], { encoding: 'utf8', maxBuffer: 64 << 20, env: { ...process.env, ...env } })).stdout;
 } catch (error) {
   output = (error.stdout ?? '') + (error.stderr ?? '');
 }
