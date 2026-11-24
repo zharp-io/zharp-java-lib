@@ -16,6 +16,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,6 +38,8 @@ final class DesktopSender {
     private final String key;
     private final Outbox outbox;
     private final AtomicBoolean draining = new AtomicBoolean();
+    /** Files being sent right now: a batch is sent by its export or by a drain, never by both. */
+    private final Set<File> sending = ConcurrentHashMap.newKeySet();
     private final ExecutorService background = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "zharp-outbox");
         t.setDaemon(true);
@@ -56,9 +60,21 @@ final class DesktopSender {
             return CompletableResultCode.ofFailure();
         }
         File saved = outbox.save(signal, body);
-        Outcome outcome = send(signal, body, TIMEOUT_MILLIS);
-        if (outcome == Outcome.FAILED) return CompletableResultCode.ofFailure();
-        outbox.delete(saved);
+        // A drain already running (the last launch's leftovers) lists this file too: whoever claims
+        // it sends it. Claimed by the drain, it's on its way, or on disk for the next launch; gone
+        // once claimed here, the drain has delivered it.
+        if (saved != null && !sending.add(saved)) return CompletableResultCode.ofSuccess();
+        if (saved != null && !saved.exists()) {
+            sending.remove(saved);
+            return CompletableResultCode.ofSuccess();
+        }
+        try {
+            Outcome outcome = send(signal, body, TIMEOUT_MILLIS);
+            if (outcome == Outcome.FAILED) return CompletableResultCode.ofFailure();
+            outbox.delete(saved);
+        } finally {
+            if (saved != null) sending.remove(saved);
+        }
         drainLater();
         return CompletableResultCode.ofSuccess();
     }
@@ -80,15 +96,20 @@ final class DesktopSender {
             for (File file : outbox.pending()) {
                 String signal = Outbox.signalOf(file);
                 if (signal == null) continue;
-                byte[] body;
+                if (!sending.add(file)) continue; // its export is sending it
                 try {
-                    body = Files.readAllBytes(file.toPath());
-                } catch (Exception e) {
+                    byte[] body;
+                    try {
+                        body = Files.readAllBytes(file.toPath());
+                    } catch (Exception e) {
+                        outbox.delete(file);
+                        continue;
+                    }
+                    if (send(signal, body, TIMEOUT_MILLIS) == Outcome.FAILED) return false;
                     outbox.delete(file);
-                    continue;
+                } finally {
+                    sending.remove(file);
                 }
-                if (send(signal, body, TIMEOUT_MILLIS) == Outcome.FAILED) return false;
-                outbox.delete(file);
             }
             return true;
         } finally {
