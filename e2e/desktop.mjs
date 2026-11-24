@@ -48,6 +48,9 @@ cd "${inDocker ? '/src' : repo}/e2e/desktop-compose"
 ./gradlew --no-daemon --console=plain :composeApp:createDistributable ${process.env.E2E_OBFUSCATE === 'true' ? ':composeApp:createReleaseDistributable' : ''} 2>&1 | grep -E 'Zharp|BUILD|error|FAIL' || true
 bin=composeApp/build/compose/binaries/main${process.env.E2E_OBFUSCATE === 'true' ? '-release' : ''}/app/zharp-desktop-e2e/bin/zharp-desktop-e2e
 test -x $bin
+./gradlew --no-daemon --console=plain -q :composeApp:suggestRuntimeModules 2>&1 | tail -3 || true
+# Xvfb has no OpenGL: Skia renders in software.
+export SKIKO_RENDER_API=SOFTWARE
 show='Zharp]|e2e desktop app|Exception|Error'
 echo "=== launch 1: handled"
 E2E_ACTION=handled timeout 60 xvfb-run -a $bin 2>&1 | grep -E "$show" | head -12 || true
